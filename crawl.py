@@ -1,5 +1,5 @@
 from urllib.parse import urlparse
-import re
+from bs4 import BeautifulSoup
 
 def normalize_url(url: str):
     url_parsed = urlparse(url=url)
@@ -7,10 +7,19 @@ def normalize_url(url: str):
     result = result.lower().rstrip("/").replace("/index.html", "")
     return result
 
-def get_h1_from_html(html: str):
-    re_result = re.search(r"<h1>(.*)</h1>", html)
-    if re_result:
-        return re_result.group(1)
+def get_h1_from_html(html: str) -> str:
+    soup: BeautifulSoup = BeautifulSoup(html, 'html.parser')
+    h1 = soup.find("h1")
+    if h1:
+        return h1.get_text()
+    else:
+        return ""
+
+def get_first_paragraph_from_html(html: str) -> str:
+    soup = BeautifulSoup(html, 'html.parser')
+    p = soup.find("p")
+    if p:
+        return p.get_text()
     else:
         return ""
     
@@ -18,7 +27,7 @@ def get_h1_from_html(html: str):
 if __name__ == '__main__':
     html = """<html>
   <body>
-    <h>Welcome to Boot.dev</h1>
+    <h1>Welcome to Boot.dev</h1>
     <main>
       <p>Learn to code by building real projects.</p>
       <p>This is the second paragraph.</p>
