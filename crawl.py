@@ -17,11 +17,13 @@ def get_h1_from_html(html: str) -> str:
 
 def get_first_paragraph_from_html(html: str) -> str:
     soup = BeautifulSoup(html, 'html.parser')
-    p = soup.find("p")
-    if p:
-        return p.get_text()
+    main_section = soup.find('main')
+    if main_section and type(main_section) == Tag:
+        first_p = main_section.find("p")
     else:
-        return ""
+        first_p = soup.find("p")
+
+    return first_p.get_text(strip=True) if first_p else ""
     
 def get_urls_from_html(html: str, base_url: str) -> list[str]:
     soup = BeautifulSoup(html, 'html.parser')
@@ -59,6 +61,22 @@ def get_images_from_html(html: str, base_url: str) -> list[str]:
             continue
 
     return result
+
+def extract_page_data(html: str, page_url: str):
+    url = get_urls_from_html(html, page_url)
+    h1 = get_h1_from_html(html)
+    first_paragraph = get_first_paragraph_from_html(html)
+    links = get_urls_from_html(html, page_url)
+    img_urls = get_images_from_html(html, page_url)
+
+    data = {
+        "url": page_url,
+        "h1": h1,
+        "first_paragraph": first_paragraph,
+        "outgoing_links": links,
+        "image_urls": img_urls
+    }
+    return data
     
 
 if __name__ == '__main__':
@@ -77,6 +95,6 @@ if __name__ == '__main__':
                 </a>
             </body
         ></html>"""
-    actual = get_urls_from_html(input_body, input_url)
+    data = extract_page_data(input_body, input_url)
 
-    print(actual)
+    print(data)
