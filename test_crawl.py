@@ -1,9 +1,11 @@
 import unittest
-from crawl import normalize_url, get_h1_from_html, get_first_paragraph_from_html
+from crawl import normalize_url, get_h1_from_html, get_first_paragraph_from_html, get_urls_from_html, get_images_from_html
 
 
 class TestCrawl(unittest.TestCase):
 
+
+########### NORMALIZE URL ###########
     def test_normalize_url1(self):
         url = "https://blog.boot.dev/path/"
         actual = normalize_url(url)
@@ -39,6 +41,8 @@ class TestCrawl(unittest.TestCase):
         actual = normalize_url(url)
         expected = "blog.boot.dev/path"
         self.assertEqual(actual, expected)
+
+########### FIND H1 TEXT ###########
 
     def test_find_h1_text1(self):
         html = """<html>
@@ -83,6 +87,8 @@ class TestCrawl(unittest.TestCase):
         expected = "Welcome to Boot.dev"
         self.assertEqual(actual, expected)
 
+########### FIND FIRST PARAGRAPH ###########
+
     def test_find_first_para1(self):
         html = """<html>
   <body>
@@ -123,6 +129,80 @@ class TestCrawl(unittest.TestCase):
 </html>"""
         actual = get_first_paragraph_from_html(html)
         expected = ""
+        self.assertEqual(actual, expected)
+
+########### GET URLS FROM HTML ###########
+
+    def test_get_urls_from_html_one_url_same_as_base(self):
+        input_url = "https://blog.boot.dev"
+        input_body = '<html><body><a href="https://blog.boot.dev"><span>Boot.dev</span></a></body></html>'
+        actual = get_urls_from_html(input_body, input_url)
+        expected = ["https://blog.boot.dev"]
+        self.assertEqual(actual, expected)
+
+    def test_get_urls_from_html_one_url_different_as_base(self):
+        input_url = "https://blog.boot.dev"
+        input_body = '<html><body><a href="/some_post"><span>Boot.dev</span></a></body></html>'
+        actual = get_urls_from_html(input_body, input_url)
+        expected = ["https://blog.boot.dev/some_post"]
+        self.assertEqual(actual, expected)
+
+    def test_get_urls_from_html_many_urls(self):
+        input_url = "https://blog.boot.dev"
+        input_body = """
+        <html>
+            <body>
+                <a href="https://blog.boot.dev">
+                    <span>Boot.dev</span>
+                </a>
+                <a href="/post_1">
+                    <span>Boot.dev</span>
+                </a>
+                <a href="/post_2">
+                    <span>Boot.dev</span>
+                </a>
+            </body
+        ></html>"""
+        actual = get_urls_from_html(input_body, input_url)
+        expected = [
+            "https://blog.boot.dev",
+            "https://blog.boot.dev/post_1",
+            "https://blog.boot.dev/post_2"
+            ]
+        self.assertEqual(actual, expected)
+
+########### GET IMAGES FROM HTML ###########
+
+    def test_get_images_from_html_one_absolute(self):
+        input_url = "https://blog.boot.dev"
+        input_body = '<html><body><img src="https://blog.boot.dev/logo.png" alt="Logo"></body></html>'
+        actual = get_images_from_html(input_body, input_url)
+        expected = ["https://blog.boot.dev/logo.png"]
+        self.assertEqual(actual, expected)
+        
+    def test_get_images_from_html_one_relative(self):
+        input_url = "https://blog.boot.dev"
+        input_body = '<html><body><img src="/logo.png" alt="Logo"></body></html>'
+        actual = get_images_from_html(input_body, input_url)
+        expected = ["https://blog.boot.dev/logo.png"]
+        self.assertEqual(actual, expected)
+
+    def test_get_images_from_html_many_imgs(self):
+        input_url = "https://blog.boot.dev"
+        input_body = """
+        <html>
+            <body>
+                <img src="https://blog.boot.dev/logo1.png" alt="Logo">
+                <img src="logo2.png" alt="Logo">
+                <img src="assets/another_logo.png" alt="Logo">
+            </body>
+        </html>"""
+        actual = get_images_from_html(input_body, input_url)
+        expected = [
+            "https://blog.boot.dev/logo1.png",
+            "https://blog.boot.dev/logo2.png",
+            "https://blog.boot.dev/assets/another_logo.png"
+            ]
         self.assertEqual(actual, expected)
 
 if __name__ == "__main__":
