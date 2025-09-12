@@ -1,5 +1,6 @@
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup,Tag
+import requests
 
 def normalize_url(url: str):
     url_parsed = urlparse(url=url)
@@ -78,23 +79,22 @@ def extract_page_data(html: str, page_url: str):
     }
     return data
     
-
-if __name__ == '__main__':
-    input_url = "https://blog.boot.dev"
-    input_body = """
-        <html>
-            <body>
-                <a href="https://blog.boot.dev">
-                    <span>Boot.dev</span>
-                </a>
-                <a href="/post_1">
-                    <span>Boot.dev</span>
-                </a>
-                <a href="/post_2">
-                    <span>Boot.dev</span>
-                </a>
-            </body
-        ></html>"""
-    data = extract_page_data(input_body, input_url)
-
-    print(data)
+def get_html(url: str) -> tuple[str, Exception | None]:
+    res = requests.get(
+        url=url,
+        headers={
+            "User-Agent": "BootCrawler/1.0"
+        }
+    )
+    # Check status code
+    if res.status_code >= 400:
+        return "", ConnectionError("Something went wrong connecting to the server")
+    # Make sure the response is text/html
+    content_type = res.headers.get("Content-Type")
+    if content_type and content_type.find("text/html") == -1:
+        return "", ConnectionError("page is not text/html")
+    # Attempt to read the content
+    try:
+        return res.content.decode(), None
+    except Exception as err:
+        return "", err
