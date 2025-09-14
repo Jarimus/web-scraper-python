@@ -86,7 +86,7 @@ def get_html(url: str) -> tuple[str, Exception | None]:
     )
     # Check status code
     if res.status_code >= 400:
-        return "", ConnectionError("Something went wrong connecting to the server")
+        return "", ConnectionError(f"Error connecting to server: {res.status_code}")
     # Make sure the response is text/html
     content_type = res.headers.get("Content-Type")
     if content_type and content_type.find("text/html") == -1:
@@ -97,11 +97,10 @@ def get_html(url: str) -> tuple[str, Exception | None]:
     except Exception as err:
         return "", err
     
-def crawl_page(base_url: str, current_url=None, page_data=None, checked_urls: set[str]=set()):
+def crawl_page(base_url: str, current_url=None, page_data: dict={}, checked_urls: set[str]=set()):
+    # For first page, current_url is base_url
     if current_url is None:
         current_url = base_url
-    if page_data is None:
-        page_data = {}
     
     # Make sure current_url is in the same domain
     if not current_url.startswith(base_url):
@@ -111,9 +110,6 @@ def crawl_page(base_url: str, current_url=None, page_data=None, checked_urls: se
     normalized_url = normalize_url(current_url)
     checked_urls.add(normalized_url)
 
-    # If the normalized url is already in page_data, return
-    if page_data.get(normalize_url, None):
-        return
     # Get html from the url. Print statement to keep track of the crawl.
     print(f"Getting html for {current_url}")
     html, err = get_html(current_url)
@@ -123,12 +119,13 @@ def crawl_page(base_url: str, current_url=None, page_data=None, checked_urls: se
     # extract_page_data() to get rich data from the page, add to page_data[normalized_url] = rich_data
     rich_data = extract_page_data(html, current_url)
     page_data[normalized_url] = rich_data
-    # Get all urls from response body html
+    # Get all outgoing links from current page
     urls = rich_data.get("outgoing_links", [])
-    # Recursively call each of them (current_url is the new page)
+    # Recursively call each of them
     for url in urls:
-        if page_data.get(normalize_url(url), None) or normalize_url(url) in checked_urls:
+        url_normalized = normalize_url(url)
+        if url_normalized in checked_urls:
             continue
-        checked_urls.add(url)
+        checked_urls.add(url_normalized)
         crawl_page(base_url, url, page_data, checked_urls)
     return page_data
