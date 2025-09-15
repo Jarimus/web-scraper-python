@@ -1,17 +1,23 @@
 import asyncio, aiohttp
 from crawl import normalize_url, extract_page_data
 from urllib.parse import urlparse
+from asyncio import Task
+from cprint import cprint
 
 class AsyncCrawler:
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, max_concurrency: int, max_pages: int):
         self.base_url = base_url
         self.base_domain = urlparse(base_url).netloc
         self.page_data = {}
         self.lock = asyncio.Lock()
-        self.max_concurrency = 3
+        self.max_concurrency = max_concurrency
         self.semaphore = asyncio.Semaphore(self.max_concurrency)
         self.session: aiohttp.ClientSession
+        self.visited = set()
         self.ignore = set()
+        self.max_pages: int = max_pages
+        self.should_stop = False
+        self.all_tasks: set[Task] = set()
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -22,9 +28,16 @@ class AsyncCrawler:
 
     async def add_page_visit(self, normalized_url):
         async with self.lock:
-            if normalized_url in self.ignore:
+            if self.should_stop:
                 return False
-            self.ignore.add(normalized_url)
+            if len(self.visited) >= self.max_pages:
+                self.should_stop = True
+                cprint("Reached maximum number of pages to crawl.", "BRed")
+                return False
+            if normalized_url in self.visited | self.ignore:
+                return False
+            if not normalized_url in self.ignore:
+                self.visited.add(normalized_url)
             return True
         
     async def get_html(self, url: str):
@@ -66,31 +79,38 @@ class AsyncCrawler:
         
         async with self.semaphore:
             # Get html from the url. Print statement to keep track of the crawl.
-            print(f"Getting html for {current_url} (Active: {self.max_concurrency - self.semaphore._value})")
+            cprint(f"Getting html for {current_url} (Active: {self.max_concurrency - self.semaphore._value})", "BGreen")
             html, err = await self.get_html(current_url)
             if err:
-                print(f"Invalid page: {err}")
+                cprint(f"Invalid page: {err}", "BRed")
+                self.ignore.add(normalized_current_url)
+                self.visited.discard(normalized_current_url)
                 return
-            # extract_page_data() to get rich data from the page, add to page_data[normalized_url] = rich_data
-            rich_data = extract_page_data(html, current_url)
+            else:
+                cprint(f"html for {current_url} retrieved successfully", "BGreen")
+            # extract_page_data() to get rich data from the page, add to page_data[normalized_url] = page_data
+            page_data = extract_page_data(html, current_url)
             async with self.lock:
-                self.page_data[normalized_current_url] = rich_data
+                self.page_data[normalized_current_url] = page_data
             # Get all outgoing links from current page
-            urls = rich_data.get("outgoing_links", [])
+            urls = page_data.get("outgoing_links", [])
+
             # Recursively call each of them
             tasks = []
             for url in urls:
-                if normalize_url(url) in self.ignore:
+                if normalize_url(url) in self.visited | self.ignore:
                     continue
                 task = asyncio.create_task(self.crawl_page(url))
                 tasks.append(task)
-        if tasks:
+            self.all_tasks.update(tasks)
+
             await asyncio.gather(*tasks)
         
     async def crawl(self):
         await self.crawl_page(self.base_url)
         return self.page_data
     
-async def crawl_site_async(base_url: str):
-    async with AsyncCrawler(base_url=base_url) as crawler:
-        return await crawler.crawl()
+async def crawl_site_async(base_url: str, max_concurrency: int=3, max_pages: int=10):
+    async with AsyncCrawler(base_url=base_url, max_concurrency=max_concurrency, max_pages=max_pages) as crawler:
+        data = await crawler.crawl()
+        return data
