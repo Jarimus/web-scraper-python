@@ -1,7 +1,8 @@
 import sys, asyncio
 from datetime import datetime
-from async_crawl import crawl_site_async
+from async_crawl import crawl_site_async, write_csv_report
 from cprint import cprint
+import csv
 
 async def main() -> None:
     # Ensure correct arg: website
@@ -28,10 +29,9 @@ async def main() -> None:
     if data:
         n = len(data)
         cprint("*"*20, "BYellow")
-        for rich_data in data.values():
-            cprint(rich_data["h1"].strip(), "BCyan")
-        cprint("*"*20, "BYellow")
         cprint(f"Number of pages: {n}", "BYellow")
+        # Write csv-file
+        write_csv_report(data)
     else:
         print("Nothing retrieved.")
 

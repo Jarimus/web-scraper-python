@@ -12,7 +12,7 @@ def get_h1_from_html(html: str) -> str:
     soup: BeautifulSoup = BeautifulSoup(html, 'html.parser')
     h1 = soup.find("h1")
     if h1:
-        return h1.get_text()
+        return h1.get_text(strip=True)
     else:
         return ""
 
@@ -37,9 +37,9 @@ def get_urls_from_html(html: str, base_url: str) -> list[str]:
             href = link.get('href')
             if type(href) == str:
                 if base_url not in href:
-                    result.append(urljoin(base_url, href))
+                    result.append(urljoin(base_url, href).strip())
                 else:
-                    result.append(href)
+                    result.append(href.strip())
         else:
             continue
 
@@ -70,10 +70,10 @@ def extract_page_data(html: str, page_url: str) -> dict[str, str | list[str]]:
     img_urls = get_images_from_html(html, page_url)
 
     return {
-        "url": page_url,
+        "page_url": page_url,
         "h1": h1,
         "first_paragraph": first_paragraph,
-        "outgoing_links": links,
+        "outgoing_link_urls": links,
         "image_urls": img_urls
     }
     
