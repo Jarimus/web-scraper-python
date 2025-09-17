@@ -93,7 +93,7 @@ class AsyncCrawler:
             async with self.lock:
                 self.page_data[normalized_current_url] = page_data
             # Get all outgoing links from current page
-            urls = page_data.get("outgoing_links", [])
+            urls = page_data.get("outgoing_link_urls", [])
 
         # Recursively call each of them
         tasks = []
